@@ -5,6 +5,8 @@ using UnityEngine.UI;
 
 public class QTE : MonoBehaviour
 {
+    [Tooltip("Mouse over before pressing the keys.")]
+    public bool mouseOver;
 
     public Wave[] waves;
     public GameObject keyBox;
@@ -54,31 +56,7 @@ public class QTE : MonoBehaviour
             
             
         }
-    }
-
-    private void NextWave()
-    {
-        StartCoroutine(ChangeColor(success));
-
-        currentWave++;
-
-        if (currentWave >= waves.Length)
-        {
-            currentWave = 0;
-            ResetKeys();           
-        }
-
-        Debug.Log("Game ended...:" + success.ToString() +" Restarting.." );
-
-        for (int i = 0; i < container.transform.childCount; i++)
-        {
-            Destroy(container.transform.GetChild(i).gameObject);
-        }
-
-        //timer = waves[currentWave].timeToReact;
-
-        LaunchWave(currentWave);
-    }
+    }  
 
     private IEnumerator ChangeColor(bool success)
     {
@@ -91,6 +69,7 @@ public class QTE : MonoBehaviour
         timerBackground.color = timerBackgroundColor;  
     }
 
+    #region Keys Management
     private void ResetKeys()
     {
         for (int i = 0; i < waves.Length; i++)
@@ -101,6 +80,65 @@ public class QTE : MonoBehaviour
                 key.timesToPressLeft = key.timesToPress;
             }
         }
+    }
+
+    private void DetectForKeyPress()
+    {
+        //Debug.Log("Detecting..");
+
+        foreach (Key key in waves[currentWave].keys)
+        {          
+            if((mouseOver && DetectIfMouseOver(key)) || !mouseOver)
+            {
+                Debug.Log("passed");
+                if(Input.GetKeyDown(key.keyCode))
+                {
+                    if (key.timesToPressLeft > 1)
+                    {
+                        key.timesToPressLeft--;
+                        key.multiTouchText.text = key.timesToPressLeft.ToString();
+                    }
+                    else
+                    {
+                        key.isPressed = true;
+                        key.multiTouchText.text = "✓";
+                    }
+                }
+            }
+
+        }
+    }
+
+    private bool DetectIfMouseOver(Key key)
+    {
+        DetectMouseOver detectMouseOver = key.keyContainer.GetComponent<DetectMouseOver>();
+        return detectMouseOver.mouseOver;
+    }
+    #endregion
+
+    #region Waves Management
+    private void NextWave()
+    {
+        StartCoroutine(ChangeColor(success));
+
+        currentWave++;
+
+        if (currentWave >= waves.Length)
+        {
+            currentWave = 0;
+            ResetKeys();
+        }
+
+        Debug.Log("Game ended...:" + success.ToString() + " Restarting..");
+
+        for (int i = 0; i < container.transform.childCount; i++)
+        {
+            Destroy(container.transform.GetChild(i).gameObject);
+        }
+
+        //timer = waves[currentWave].timeToReact;
+
+        LaunchWave(currentWave);
     }
 
     private void LaunchWave(int waveToLaunch)
@@ -121,40 +159,13 @@ public class QTE : MonoBehaviour
             Text multiTouchContainerText = multiTouchContainer.GetComponentInChildren<Text>();
             multiTouchContainerText.text = key.timesToPress.ToString();
             key.multiTouchText = multiTouchContainerText;
+
+            key.keyContainer = keyBox_;
         }
 
         waveInProgress = true;
 
         //StartCoroutine(WaveTimer());
-    }
-
-    IEnumerator WaveTimer()
-    {
-        waveInProgress = true;
-        yield return new WaitForSeconds(waves[currentWave].timeToReact);
-        waveInProgress = false;
-    }
-
-    private void DetectForKeyPress()
-    {
-        //Debug.Log("Detecting..");
-
-        foreach (Key key in waves[currentWave].keys)
-        {
-            if(Input.GetKeyDown(key.keyCode))
-            {
-                if (key.timesToPressLeft > 1)
-                {
-                    key.timesToPressLeft--;
-                    key.multiTouchText.text = key.timesToPressLeft.ToString();
-                }
-                else
-                {
-                    key.isPressed = true;
-                    key.multiTouchText.text = "✓";
-                }
-            }
-        }
     }
 
     private bool DetectForEndWave()
@@ -170,6 +181,8 @@ public class QTE : MonoBehaviour
             return false;
         else return true;
     }
+    #endregion
+
 }
 
 [System.Serializable]
@@ -195,4 +208,6 @@ public class Key
     public int timesToPressLeft;
     [HideInInspector]
     public Text multiTouchText;
+    [HideInInspector]
+    public GameObject keyContainer;
 }
