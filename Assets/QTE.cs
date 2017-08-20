@@ -5,21 +5,43 @@ using UnityEngine.UI;
 
 public class QTE : MonoBehaviour
 {
+    private static QTE instance;
+    public static QTE Instance
+    {
+        get
+        {
+            return instance;
+        }
+    }
+
+    [Header("Features")]
     [Tooltip("Mouse over before pressing the keys.")]
     public bool mouseOver;
+    [Tooltip("Keys moving around randomly.")]
+    public bool keysMoving;
+    public float keysSpeed = 5.0f;
 
     public Wave[] waves;
+
+    [Header("References")]
     public GameObject keyBox;
     public GameObject container;
     public Text timerText;
     public Image timerBackground;
 
-    private bool waveInProgress = false;
+    public bool waveInProgress = false;
+
     private Text keyText;
     private int currentWave = 0;
     private bool success = false;
     private float timer;
     private Color timerBackgroundColor;
+
+    protected void Awake()
+    {
+        if (instance == null)
+            instance = this;
+    }
 
     protected void Start()
     {
@@ -69,6 +91,15 @@ public class QTE : MonoBehaviour
         timerBackground.color = timerBackgroundColor;  
     }
 
+    private IEnumerator ChangeSize(Transform obj, Vector2 size)
+    {
+        Vector2 originalSize = obj.localScale;
+        obj.localScale = size;
+        yield return new WaitForSeconds(0.2f);
+        if(obj != null)
+            obj.localScale = originalSize;
+    }
+
     #region Keys Management
     private void ResetKeys()
     {
@@ -90,12 +121,14 @@ public class QTE : MonoBehaviour
         {          
             if((mouseOver && DetectIfMouseOver(key)) || !mouseOver)
             {
-                Debug.Log("passed");
                 if(Input.GetKeyDown(key.keyCode))
                 {
+                    Vector2 pressSize = new Vector2(1.1f, 1.1f);
+                    StartCoroutine(ChangeSize(key.keyContainer.transform, pressSize));
+
                     if (key.timesToPressLeft > 1)
                     {
-                        key.timesToPressLeft--;
+                        key.timesToPressLeft--; 
                         key.multiTouchText.text = key.timesToPressLeft.ToString();
                     }
                     else
@@ -143,6 +176,8 @@ public class QTE : MonoBehaviour
 
     private void LaunchWave(int waveToLaunch)
     {
+        MoveKeys.Instance.ClearKeysList();
+
         Debug.Log("Launching wave " + waveToLaunch.ToString());
         timer = waves[currentWave].timeToReact;
         success = false;
@@ -155,6 +190,8 @@ public class QTE : MonoBehaviour
             keyText = keyBox_.GetComponentInChildren<Text>();
             keyText.text = key.keyName;
 
+            MoveKeys.Instance.AddKeyToList(keyBox_);
+
             Transform multiTouchContainer = keyBox_.transform.GetChild(1);
             Text multiTouchContainerText = multiTouchContainer.GetComponentInChildren<Text>();
             multiTouchContainerText.text = key.timesToPress.ToString();
@@ -164,6 +201,8 @@ public class QTE : MonoBehaviour
         }
 
         waveInProgress = true;
+
+        MoveKeys.Instance.UpdateKeysPositions();
 
         //StartCoroutine(WaveTimer());
     }
